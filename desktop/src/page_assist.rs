@@ -68,7 +68,10 @@ fn valid_id(id: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'.')
 }
 
-#[cfg(feature = "work-product")]
+#[cfg(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+))]
 mod product {
     use super::*;
     use std::collections::HashMap;
@@ -1147,28 +1150,71 @@ mod product {
     }
 }
 
-#[cfg(feature = "work-product")]
+#[cfg(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+))]
 pub(crate) use product::{
     hosted_charged, hosted_sourced, install, observe_items, observe_tab, preference_changed,
 };
 
-#[cfg(not(feature = "work-product"))]
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
+pub(crate) fn install(
+    _app: &tauri::AppHandle,
+    _engine: std::sync::Arc<zephium_engine::WebviewEngine>,
+    _store: std::sync::Arc<zephium_store::SqliteStore>,
+) {
+}
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
+pub(crate) fn hosted_sourced(_request_id: &str, _conversation: &str, _reply: u32) {}
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
+pub(crate) fn hosted_charged(
+    _request_id: &str,
+    _charged_units: Option<u64>,
+    _units_per_credit: Option<u64>,
+) {
+}
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
 pub(crate) fn observe_items(_state: &zephium_ipc::ItemsState) {}
-#[cfg(not(feature = "work-product"))]
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
 pub(crate) fn observe_tab(_tab: &zephium_ipc::TabView) {}
-#[cfg(not(feature = "work-product"))]
+#[cfg(not(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+)))]
 pub(crate) fn preference_changed(_key: &str, _value: &str) {}
 
 macro_rules! with_service {
     ($none:expr, |$service:ident| $body:expr) => {{
-        #[cfg(feature = "work-product")]
+        #[cfg(all(
+            feature = "work-product",
+            any(target_os = "macos", target_os = "windows")
+        ))]
         {
             match product::service() {
                 Some($service) => $body,
                 None => $none,
             }
         }
-        #[cfg(not(feature = "work-product"))]
+        #[cfg(not(all(
+            feature = "work-product",
+            any(target_os = "macos", target_os = "windows")
+        )))]
         {
             $none
         }
@@ -1484,7 +1530,10 @@ pub(crate) async fn page_style_remove(
     with_service!(no_styles(tab), |service| service.remove_style(&tab, &style))
 }
 
-#[cfg(feature = "work-product")]
+#[cfg(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+))]
 fn profile_of(profile: &str) -> Option<zephium_core::ids::ProfileId> {
     zephium_core::ids::ProfileId::parse(profile).filter(|id| id.to_string() == profile)
 }
@@ -1562,7 +1611,10 @@ mod tests {
 
 /// "Run in Work" from the Ask panel: the same Work documents and operation
 /// owner the panel's own Work flow uses, in order.
-#[cfg(feature = "work-product")]
+#[cfg(all(
+    feature = "work-product",
+    any(target_os = "macos", target_os = "windows")
+))]
 mod handoff {
     use super::*;
     use std::time::Duration;
