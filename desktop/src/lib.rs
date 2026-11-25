@@ -454,9 +454,9 @@ struct UiStartupGate {
 
 // WebView2 cold starts compete with runtime servicing and antivirus scanning.
 // Keep initialization bounded without terminating an otherwise healthy launch.
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", all(target_os = "linux", debug_assertions)))]
 const UI_INITIALIZATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", all(target_os = "linux", debug_assertions))))]
 const UI_INITIALIZATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 #[derive(Clone)]
@@ -7293,6 +7293,10 @@ fn finish_browser_setup(
         tauri::Url::parse(PRIVILEGED_BOOTSTRAP_URL)
             .map_err(|error| std::io::Error::other(error.to_string()))?,
     );
+    #[cfg(target_os = "linux")]
+    {
+        main_config.transparent = false;
+    }
     #[cfg(target_os = "macos")]
     if let Some(position) = main_config.traffic_light_position.as_mut() {
         position.y += platform::imp::window_controls_lift();
@@ -7408,6 +7412,9 @@ fn finish_browser_setup(
     );
     // Onboarding composes for one size; the browser takes the window
     // back resizable once it has replaced onboarding.
+    // On Linux/GTK3, set_resizable(false) ignores default_size and shrinks
+    // the toplevel to ZeroFixed's (0, 0) preferred size.
+    #[cfg(not(target_os = "linux"))]
     if onboarding {
         window.set_resizable(false)?;
         window.set_maximizable(false)?;
@@ -8534,12 +8541,6 @@ fn finish_browser_setup(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    if cfg!(all(unix, not(target_os = "macos"))) {
-        diagnostic!(
-            "Zephium isn't available on Linux yet. We're working on it; follow https://zephium.app for news."
-        );
-        std::process::exit(1);
-    }
     #[cfg(feature = "adblock-qa")]
     blocker_bench::refuse_bad_arguments();
     install_async_runtime();

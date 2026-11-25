@@ -353,6 +353,7 @@ pub fn show_initialized_top_level(window: &WebviewWindow) -> Result<(), LinuxIni
 
 fn show_top_level_only(gtk_window: &gtk::ApplicationWindow) -> Result<(), LinuxInitError> {
     gtk_window.show();
+    gtk_window.present();
     if gtk_window.is_visible() {
         Ok(())
     } else {
