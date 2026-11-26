@@ -316,6 +316,12 @@ fn unbuilt(app: &tauri::AppHandle, window: u64) {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn build(_app: &tauri::AppHandle, _opened: MiniOpenedView) -> bool {
+    false
+}
+
+#[cfg(not(target_os = "linux"))]
 fn build(app: &tauri::AppHandle, opened: MiniOpenedView) -> bool {
     use raw_window_handle::HasWindowHandle;
 

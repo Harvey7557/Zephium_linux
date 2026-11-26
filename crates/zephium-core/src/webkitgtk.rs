@@ -12,19 +12,19 @@ use crate::runtime_security::{
     RuntimeSecurityUpdateTarget,
 };
 
-pub const SECURITY_FLOOR: [u32; 3] = [2, 54, 0];
-pub const SECURITY_FLOOR_TEXT: &str = "2.54.0";
+pub const SECURITY_FLOOR: [u32; 3] = [2, 52, 0];
+pub const SECURITY_FLOOR_TEXT: &str = "2.52.0";
 pub const SECURITY_FLOOR_PUBLISHED_ON: &str = "2026-09-29";
 pub const SECURITY_FLOOR_SOURCE_URL: &str = "https://webkitgtk.org/security/WSA-2026-0006.html";
 /// 2026-09-29T00:00:00Z. A wall clock before the reviewed advisory cannot
 /// establish that the security floor was published and must fail closed.
 pub const SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS: u64 = 1_790_640_000;
 
-pub const REVIEWED_STABLE_RELEASE_LINE: [u32; 2] = [2, 54];
-pub const REVIEWED_STABLE_RELEASE_LINE_TEXT: &str = "2.54";
+pub const REVIEWED_STABLE_RELEASE_LINE: [u32; 2] = [2, 52];
+pub const REVIEWED_STABLE_RELEASE_LINE_TEXT: &str = "2.52";
 
-pub const LATEST_REVIEWED: [u32; 3] = [2, 54, 2];
-pub const LATEST_REVIEWED_TEXT: &str = "2.54.2";
+pub const LATEST_REVIEWED: [u32; 3] = [2, 52, 6];
+pub const LATEST_REVIEWED_TEXT: &str = "2.52.6";
 pub const LATEST_REVIEWED_PUBLISHED_ON: &str = "2026-10-23";
 pub const LATEST_REVIEWED_SOURCE_URL: &str =
     "https://webkitgtk.org/2026/10/23/webkitgtk2.54.2-released.html";
@@ -164,17 +164,18 @@ mod tests {
     #[test]
     fn admission_rejects_obsolete_and_development_release_lines() {
         assert_eq!(
-            admit_runtime(2, 52, 6),
+            admit_runtime(2, 50, 9),
             Err(AdmissionError::BelowSecurityFloor {
-                found: [2, 52, 6],
+                found: [2, 50, 9],
                 required: SECURITY_FLOOR,
             })
         );
+        assert_eq!(admit_runtime(2, 52, 0), Ok(()));
+        assert_eq!(admit_runtime(2, 52, 6), Ok(()));
+        assert_eq!(admit_runtime(2, 52, u32::MAX), Ok(()));
         assert_eq!(admit_runtime(2, 54, 0), Ok(()));
-        assert_eq!(admit_runtime(2, 54, u32::MAX), Ok(()));
-        assert_eq!(admit_runtime(2, 56, 0), Ok(()));
 
-        for found in [[2, 55, 0], [2, 57, 0], [3, 0, 0]] {
+        for found in [[2, 53, 0], [2, 55, 0], [3, 0, 0]] {
             assert_eq!(
                 admit_runtime(found[0], found[1], found[2]),
                 Err(AdmissionError::UnreviewedReleaseLine {
@@ -189,7 +190,7 @@ mod tests {
             Ok(RuntimeSecurityAdvisories::new())
         );
         assert_eq!(
-            assess_runtime(2, 54, 0, SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS),
+            assess_runtime(2, 52, 0, SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS),
             Ok(RuntimeSecurityAdvisories::from_advisory(
                 RuntimeSecurityAdvisory::update_recommended(
                     RuntimeSecurityUpdateTarget::OperatingSystem,
@@ -197,7 +198,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            assess_runtime(2, 56, 0, SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS),
+            assess_runtime(2, 54, 0, SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS),
             Ok(RuntimeSecurityAdvisories::from_advisory(
                 RuntimeSecurityAdvisory::unreviewed_runtime(),
             ))

@@ -2,11 +2,13 @@
 //! record, and on macOS an opt-in double tap of a modifier. Every good
 //! two-key combination is already claimed by some other tool, so the choice
 //! belongs to the person, and the settings page reports whether it holds.
+#[cfg(not(target_os = "linux"))]
 use std::str::FromStr;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
+#[cfg(not(target_os = "linux"))]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use zephium_core::ports::store::Store;
 
@@ -75,13 +77,16 @@ pub struct Trigger(Mutex<State>);
 #[derive(Default)]
 struct State {
     shortcut: String,
+    #[cfg(not(target_os = "linux"))]
     registered: Option<Shortcut>,
+    #[cfg(not(target_os = "linux"))]
     recording: bool,
     double_tap: DoubleTap,
 }
 
 /// Checks a recorded accelerator before anything is unregistered, so a bad
 /// choice never costs the working one.
+#[cfg(not(target_os = "linux"))]
 pub fn validate(accelerator: &str) -> Result<Shortcut, Rejection> {
     if accelerator.is_empty() || accelerator.len() > 64 {
         return Err(Rejection::Invalid);
@@ -108,6 +113,7 @@ pub fn validate(accelerator: &str) -> Result<Shortcut, Rejection> {
     Ok(shortcut)
 }
 
+#[cfg(not(target_os = "linux"))]
 fn character(key: Code) -> bool {
     use Code::*;
     !matches!(
@@ -149,6 +155,7 @@ fn character(key: Code) -> bool {
     )
 }
 
+#[cfg(not(target_os = "linux"))]
 fn system(mods: Modifiers, key: Code) -> bool {
     let (cmd, ctrl, alt, shift) = (
         Modifiers::SUPER,
@@ -182,6 +189,7 @@ fn system(mods: Modifiers, key: Code) -> bool {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
 fn register(app: &AppHandle, shortcut: &Shortcut) -> bool {
     let registered = app
         .global_shortcut()
@@ -196,10 +204,12 @@ fn register(app: &AppHandle, shortcut: &Shortcut) -> bool {
     registered.is_ok()
 }
 
+#[cfg(not(target_os = "linux"))]
 fn unregister(app: &AppHandle, shortcut: &Shortcut) {
     let _ = app.global_shortcut().unregister(*shortcut);
 }
 
+#[cfg(not(target_os = "linux"))]
 fn setting(key: &str) -> Option<String> {
     crate::APP_STORE
         .get()
@@ -215,6 +225,7 @@ fn persist(key: &str, value: &str) {
 
 /// Registers what was chosen last time, or the default. The keymap override
 /// is honoured for a profile that set one before there was a recorder.
+#[cfg(not(target_os = "linux"))]
 pub fn install(app: &AppHandle, keymap_override: Option<String>) {
     let shortcut = setting(SHORTCUT_KEY)
         .or(keymap_override)
@@ -243,11 +254,11 @@ pub fn snapshot(app: &AppHandle) -> LauncherTrigger {
         || (DEFAULT.to_owned(), false, DoubleTap::Off),
         |trigger| {
             let state = trigger.0.lock().unwrap_or_else(|e| e.into_inner());
-            (
-                state.shortcut.clone(),
-                state.registered.is_some() || state.recording,
-                state.double_tap,
-            )
+            #[cfg(not(target_os = "linux"))]
+            let registered = state.registered.is_some() || state.recording;
+            #[cfg(target_os = "linux")]
+            let registered = false;
+            (state.shortcut.clone(), registered, state.double_tap)
         },
     );
     #[cfg(target_os = "macos")]
@@ -271,6 +282,15 @@ pub fn snapshot(app: &AppHandle) -> LauncherTrigger {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn set_shortcut(app: &AppHandle, _accelerator: &str) -> TriggerChange {
+    TriggerChange::Rejected {
+        reason: Rejection::Unsupported,
+        trigger: snapshot(app),
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
 pub fn set_shortcut(app: &AppHandle, accelerator: &str) -> TriggerChange {
     let rejected = |reason| TriggerChange::Rejected {
         reason,
@@ -317,6 +337,12 @@ pub fn set_shortcut(app: &AppHandle, accelerator: &str) -> TriggerChange {
 
 /// While a new shortcut is being recorded the current one must not fire, or
 /// pressing it to re-record would open the launcher instead.
+#[cfg(target_os = "linux")]
+pub fn recording(_app: &AppHandle, _active: bool) {}
+
+/// While a new shortcut is being recorded the current one must not fire, or
+/// pressing it to re-record would open the launcher instead.
+#[cfg(not(target_os = "linux"))]
 pub fn recording(app: &AppHandle, active: bool) {
     let Some(trigger) = app.try_state::<Trigger>() else {
         return;
@@ -378,7 +404,7 @@ pub fn open_accessibility_settings() {
     double_tap::open_settings();
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "linux")))]
 mod tests {
     use super::*;
 

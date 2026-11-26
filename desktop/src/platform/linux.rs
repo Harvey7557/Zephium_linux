@@ -198,12 +198,25 @@ fn install_composition(
     let fixed: gtk::Fixed = zero_fixed::ZeroFixed::new().upcast();
     vbox.remove(chrome);
     gtk_window.remove(vbox);
+    let (default_width, default_height) = gtk_window.default_size();
+    if default_width > 0 && default_height > 0 {
+        chrome.set_size_request(default_width, default_height);
+    }
     fixed.put(chrome, 0, 0);
     gtk_window.add(&fixed);
 
     let sized_chrome = chrome.clone();
     fixed.connect_size_allocate(move |_, allocation| {
-        sized_chrome.set_size_request(allocation.width(), allocation.height());
+        let width = allocation.width();
+        let height = allocation.height();
+        if width <= 0 || height <= 0 {
+            return;
+        }
+        if sized_chrome.size_request() != (width, height) {
+            sized_chrome.set_size_request(width, height);
+        }
+        sized_chrome.size_allocate(&gtk::Rectangle::new(0, 0, width, height));
+        sized_chrome.queue_draw();
     });
     fixed.show_all();
 
@@ -353,6 +366,8 @@ pub fn show_initialized_top_level(window: &WebviewWindow) -> Result<(), LinuxIni
 
 fn show_top_level_only(gtk_window: &gtk::ApplicationWindow) -> Result<(), LinuxInitError> {
     gtk_window.show();
+    gtk_window.present();
+    gtk_window.queue_draw();
     if gtk_window.is_visible() {
         Ok(())
     } else {
